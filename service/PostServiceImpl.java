@@ -1,11 +1,11 @@
 package com.examly.springapp.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import com.examly.springapp.model.Post;
 import com.examly.springapp.model.User;
 import com.examly.springapp.repository.PostRepository;
 import com.examly.springapp.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,26 +13,20 @@ import java.util.Optional;
 @Service
 public class PostServiceImpl implements PostService {
 
-    private final PostRepository postRepository;
-    private final UserRepository userRepository;
+    @Autowired
+    private PostRepository postRepository;
 
     @Autowired
-    public PostServiceImpl(PostRepository postRepository, UserRepository userRepository) {
-        this.postRepository = postRepository;
-        this.userRepository = userRepository;
-    }
+    private UserRepository userRepository;
 
     @Override
-    public Post createPostForUser(Integer userId, Post post) throws Exception {
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (!userOpt.isPresent()) {
-            throw new Exception("User not found with ID: " + userId);
+    public Post createPostForUser(int userId, Post post) {
+        Optional<User> user = userRepository.findById(userId);
+        if (user.isPresent()) {
+            post.setUser(user.get());
+            return postRepository.save(post);
         }
-        User user = userOpt.get();
-        // maintain both sides
-        user.addPost(post);
-        userRepository.save(user); // cascades and saves post
-        return post;
+        return null;
     }
 
     @Override
@@ -41,38 +35,29 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public Optional<Post> getPostById(Integer postId) {
-        return postRepository.findById(postId);
+    public Post getPostById(int postId) {
+        return postRepository.findById(postId).orElse(null);
     }
 
     @Override
-    public Optional<Post> updatePost(Integer postId, Post post) {
-        Optional<Post> existing = postRepository.findById(postId);
-        if (!existing.isPresent()) {
-            return Optional.empty();
+    public Post updatePost(int postId, Post post) {
+        Optional<Post> existingPost = postRepository.findById(postId);
+        if (existingPost.isPresent()) {
+            Post updated = existingPost.get();
+            updated.setTitle(post.getTitle());
+            updated.setContent(post.getContent());
+            return postRepository.save(updated);
         }
-        Post p = existing.get();
-        if (post.getTitle() != null) p.setTitle(post.getTitle());
-        if (post.getContent() != null) p.setContent(post.getContent());
-        postRepository.save(p);
-        return Optional.of(p);
+        return null;
     }
 
     @Override
-    public String deletePost(Integer postId) {
-        Optional<Post> existing = postRepository.findById(postId);
-        if (!existing.isPresent()) {
-            return "Post not found with ID: " + postId;
+    public String deletePost(int postId) {
+        Optional<Post> existingPost = postRepository.findById(postId);
+        if (existingPost.isPresent()) {
+            postRepository.deleteById(postId);
+            return "Post deleted successfully";
         }
-        Post p = existing.get();
-        // remove from user posts to keep relation clean
-        User user = p.getUser();
-        if (user != null) {
-            user.removePost(p);
-            userRepository.save(user);
-        } else {
-            postRepository.delete(p);
-        }
-        return "Post deleted successfully";
+        return "Post not found with ID: " + postId;
     }
 }

@@ -1,70 +1,64 @@
 package com.examly.springapp.controller;
 
-import com.examly.springapp.model.Post;
-import com.examly.springapp.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.examly.springapp.model.Post;
+import com.examly.springapp.service.PostService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/post")
 public class PostController {
 
-    private final PostService postService;
-
     @Autowired
-    public PostController(PostService postService) {
-        this.postService = postService;
-    }
+    private PostService postService;
 
-    // POST - /post/user/{userId} create a post and map to user
-    @PostMapping("/user/{userId}")
-    public ResponseEntity<?> createPostForUser(@PathVariable Integer userId, @RequestBody Post post) {
+    @PostMapping("/post/user/{userId}")
+    public ResponseEntity<Post> createPostForUser(@PathVariable int userId, @RequestBody Post post) {
         try {
-            Post saved = postService.createPostForUser(userId, post);
-            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+            Post savedPost = postService.createPostForUser(userId, post);
+            if (savedPost != null)
+                return ResponseEntity.status(201).body(savedPost);
+            else
+                return ResponseEntity.status(500).build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create post for user: " + e.getMessage());
+            return ResponseEntity.status(500).build();
         }
     }
 
-    // GET - /post  list all posts
-    @GetMapping
-    public ResponseEntity<?> getAllPosts() {
+    @GetMapping("/post")
+    public ResponseEntity<List<Post>> getAllPosts() {
         List<Post> posts = postService.getAllPosts();
-        if (posts.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No posts found");
-        }
+        if (posts.isEmpty())
+            return ResponseEntity.status(404).build();
         return ResponseEntity.ok(posts);
     }
 
-    // GET - /post/{postId}
-    @GetMapping("/{postId}")
-    public ResponseEntity<?> getPostById(@PathVariable Integer postId) {
-        return postService.getPostById(postId)
-                .map(p -> ResponseEntity.ok(p))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found with ID: " + postId));
+    @GetMapping("/post/{postId}")
+    public ResponseEntity<Post> getPostById(@PathVariable int postId) {
+        Post post = postService.getPostById(postId);
+        if (post != null)
+            return ResponseEntity.ok(post);
+        else
+            return ResponseEntity.status(404).build();
     }
 
-    // PUT - /post/{postId} update title and/or content
-    @PutMapping("/{postId}")
-    public ResponseEntity<?> updatePost(@PathVariable Integer postId, @RequestBody Post post) {
-        return postService.updatePost(postId, post)
-                .map(updated -> ResponseEntity.ok(updated))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found with ID: " + postId));
+    @PutMapping("/post/{postId}")
+    public ResponseEntity<Post> updatePost(@PathVariable int postId, @RequestBody Post post) {
+        Post updated = postService.updatePost(postId, post);
+        if (updated != null)
+            return ResponseEntity.ok(updated);
+        else
+            return ResponseEntity.status(404).build();
     }
 
-    // DELETE - /post/{postId}
-    @DeleteMapping("/{postId}")
-    public ResponseEntity<?> deletePost(@PathVariable Integer postId) {
+    @DeleteMapping("/post/{postId}")
+    public ResponseEntity<String> deletePost(@PathVariable int postId) {
         String result = postService.deletePost(postId);
-        if ("Post deleted successfully".equals(result)) {
+        if (result.equals("Post deleted successfully"))
             return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(result);
-        }
+        else
+            return ResponseEntity.status(404).body(result);
     }
 }
